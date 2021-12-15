@@ -13,6 +13,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "02.Models", "02.Models", "{
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PinDuoDuo.Models", "PinDuoDuo.Models\PinDuoDuo.Models.csproj", "{3776A696-1B39-4F66-A82B-928B643DF773}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "04.Data Access Layer", "04.Data Access Layer", "{CD383BCC-08E9-4890-8F99-DEAA5E82AEE5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Business.Model", "Business.Model\Business.Model.csproj", "{70223D6E-CD65-43CF-AE3D-A45B263A7BEF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -31,6 +35,10 @@ Global
 		{3776A696-1B39-4F66-A82B-928B643DF773}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3776A696-1B39-4F66-A82B-928B643DF773}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3776A696-1B39-4F66-A82B-928B643DF773}.Release|Any CPU.Build.0 = Release|Any CPU
+		{70223D6E-CD65-43CF-AE3D-A45B263A7BEF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{70223D6E-CD65-43CF-AE3D-A45B263A7BEF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{70223D6E-CD65-43CF-AE3D-A45B263A7BEF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{70223D6E-CD65-43CF-AE3D-A45B263A7BEF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -38,6 +46,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{9DC65E5C-6FF3-4E0B-B0BC-A73CC7B9D29F} = {27C6930E-561D-435E-9F9F-D4101EB723D6}
 		{3776A696-1B39-4F66-A82B-928B643DF773} = {16EF3897-14E3-4931-B8BF-E91C103AC0C9}
+		{70223D6E-CD65-43CF-AE3D-A45B263A7BEF} = {16EF3897-14E3-4931-B8BF-E91C103AC0C9}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0B229063-D089-40D3-8212-D2EA7A375603}

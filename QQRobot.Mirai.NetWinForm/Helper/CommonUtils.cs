@@ -32,5 +32,26 @@ namespace QQRobot.Mirai.NetWinForm.Helper
             return str;
         }
 
-    }
+        /// <summary>
+        /// 判断某个时间，是否在某个时间段内
+        /// </summary>
+        /// <param name="time">时间点</param>
+        /// <param name="startTime">开始时间:01:00</param>
+        /// <param name="endTime">结束时间:11:00</param>
+        /// <returns></returns>
+        public static bool IsInTimeInterval(DateTime time, string startTime, string endTime)
+		{
+            TimeSpan startTimeSpan = DateTime.Parse(startTime).TimeOfDay;
+            TimeSpan endTimeSpan = DateTime.Parse(endTime).TimeOfDay;
+            TimeSpan timeSpan = time.TimeOfDay;
+
+            if (timeSpan > startTimeSpan && timeSpan < endTimeSpan)
+            {
+                return true;
+            }
+            return false;
+        }
+
+
+	}
 }

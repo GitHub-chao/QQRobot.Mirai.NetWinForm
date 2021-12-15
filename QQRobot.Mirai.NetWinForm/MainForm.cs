@@ -26,6 +26,7 @@ using Mirai.Net.Data.Messages;
 using PinDuoDuo.Models;
 using Mirai.Net.Data.Exceptions;
 using System.Diagnostics;
+using QQRobot.Mirai.NetWinForm.Service;
 
 namespace QQRobot.Mirai.NetWinForm
 {
@@ -52,8 +53,10 @@ namespace QQRobot.Mirai.NetWinForm
         /// 是否连接成功
         /// </summary>
         public bool IsConnnectSuccess = false;
+
+        private int BotServerProcessID = 0;
         #endregion
-        
+
         public MainForm()
         {
             InitializeComponent();
@@ -147,35 +150,43 @@ namespace QQRobot.Mirai.NetWinForm
 
             exit.WaitOne();
         }
-
+        /// <summary>
+        /// 打开机器人服务
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void OpenBotBtn_Click(object sender, EventArgs e)
         {
             string str = AppDomain.CurrentDomain.BaseDirectory + @"MiraiNetService";
             string strDirPath = System.IO.Path.GetDirectoryName(str);
             string strFilePath = System.IO.Path.GetFileName(str);
             string command = "mcl.cmd";
-            Task.Run(() =>
-            {
+            Task.Run(()=> {
+                AsynUpdateUI updateUI = new AsynUpdateUI(UpdateRunLogRichText);
                 try
                 {
-                    System.Diagnostics.Process process = new System.Diagnostics.Process();
+                    updateUI.Invoke("正在打开服务，请稍等...");
+                    Process process = new Process();
                     process.StartInfo.WorkingDirectory = str;
                     process.StartInfo.FileName = "cmd.exe";
                     process.StartInfo.UseShellExecute = false;     //是否使用操作系统shell启动
-                    process.StartInfo.CreateNoWindow = false;        //不显示程序窗口
+                    process.StartInfo.CreateNoWindow = true;        //不显示程序窗口
                     process.StartInfo.RedirectStandardOutput = true;  //由调用程序获取输出信息
                     process.StartInfo.RedirectStandardInput = true;  //接受来自调用程序的输入信息
                     process.StartInfo.RedirectStandardError = true;  //重定向标准错误输出
 
                     process.Start();
+                    BotServerProcessID = process.Id;
                     process.StandardInput.WriteLine(command);   //向cmd窗口发送输入信息，&exit意思为不论command命令执行成功与否，接下来都执行exit这句
                     process.StandardInput.AutoFlush = true;
-                    
-                    string output = process.StandardOutput.ReadToEnd();  //获取cmd的输出信息
 
+                    process.BeginOutputReadLine();
+                    // 为异步获取订阅事件  
+                    process.OutputDataReceived +=  new DataReceivedEventHandler(process_OutputDataReceived);
+                    //string output = process.StandardOutput.ReadToEnd();  //获取cmd的输出信息
+                    process.WaitForExit();
                     process.Close();
                     process.Dispose();
-                    MessageBox.Show("command命令123123：" + output);
                 }
                 catch (Exception a)
                 {
@@ -184,6 +195,14 @@ namespace QQRobot.Mirai.NetWinForm
             });
         }
 
+        private void process_OutputDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            AsynUpdateUI updateUI = new AsynUpdateUI(UpdateRunLogRichText);
+            // 这里仅做输出的示例，实际上您可以根据情况取消获取命令行的内容  
+            if (e.Data.IndexOf("mirai-console started successfully") >= 0) {
+                updateUI.Invoke("服务已开启。");
+            }
+        }
 
         /// <summary>
         /// 测试连接
@@ -195,7 +214,16 @@ namespace QQRobot.Mirai.NetWinForm
             TestConnectBtnClickMain();
         }
 
+        private void TestConnectBtnClickMainProcessOutputDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            AsynUpdateUI updateUI = new AsynUpdateUI(UpdateRunLogRichText);
+            // 这里仅做输出的示例，实际上您可以根据情况取消获取命令行的内容  
+            //if (e.Data.IndexOf("mirai-console started successfully") >= 0)
+            //{
 
+            //}
+            updateUI.Invoke("登录中" + e.Data);
+        }
 
         private async Task TestConnectBtnClickMain()
         {
@@ -211,17 +239,56 @@ namespace QQRobot.Mirai.NetWinForm
                 IsConnnectSuccess = true;
                 MessageBox.Show("测试连接成功");
             }
-            catch (InvalidResponseException ex) {
+            catch (InvalidResponseException ex)
+            {
                 MessageBox.Show("连接失败：请检查是否开启当前QQ的Bot");
             }
             catch (Exception ex)
             {
                 MessageBox.Show("异常:" + ex.ToString());
             }
+
+            //try
+            //{
+            //    if (BotServerProcessID > 0)
+            //    {
+            //        var process = Process.GetProcessById(BotServerProcessID);
+            //        MessageBox.Show(process.GetCommandLineArgs());
+
+            //        string command = "/login 2770434195 chao@123";
+
+            //        //process.StartInfo.RedirectStandardOutput = true;  //由调用程序获取输出信息
+            //        //process.StartInfo.RedirectStandardInput = true;  //接受来自调用程序的输入信息
+            //        //process.StartInfo.RedirectStandardError = true;  //重定向标准错误输出
+
+            //        //process.Start();
+            //        process.StandardInput.WriteLine(command);   //向cmd窗口发送输入信息，&exit意思为不论command命令执行成功与否，接下来都执行exit这句
+            //        process.StandardInput.AutoFlush = true;
+            //        process.BeginOutputReadLine();
+            //        process.OutputDataReceived += new DataReceivedEventHandler(TestConnectBtnClickMainProcessOutputDataReceived);
+            //        process.WaitForExit();
+            //        process.Close();
+            //        process.Dispose();
+            //    }
+            //    else {
+            //        MessageBox.Show("请先打开Bot服务");
+            //    }
+            //}
+            //catch (InvalidResponseException ex) {
+            //    MessageBox.Show("连接失败：请检查是否开启当前QQ的Bot");
+            //}
+            //catch (Exception ex)
+            //{
+            //    MessageBox.Show("异常:" + ex.ToString());
+            //}
         }
 
-
-        private async void SendMessageBase(MessageBase[] messages1)
+        /// <summary>
+        /// 消息推送主方法
+        /// </summary>
+        /// <param name="messages1"></param>
+        /// <param name="MsgToType">friend：好友;Groups ： 群</param>
+        private async void SendMessageBase(MessageBase[] messages1, string MsgToType = "friend")
         {
             try
             {
@@ -232,11 +299,27 @@ namespace QQRobot.Mirai.NetWinForm
                     QQ = BotQQText.Text
                 };
                 await bot.LaunchAsync();
-                await MessageManager.SendFriendMessageAsync("2094835564", messages1);
+                if (MsgToType == "friend")
+                {
+                    string[] friendQQs = this.FriendQQBox.Text.Split(',');
+                    for (int fi = 0; fi < friendQQs.Length; fi++)
+                    {
+                        string sendQQ = friendQQs[fi];
+                        await MessageManager.SendFriendMessageAsync(sendQQ, messages1);
+                    }
+                }
+                else {
+                    string[] groupQQs = this.GroupsQQBox.Text.Split(',');
+                    for (int gi = 0; gi < groupQQs.Length; gi++)
+                    {
+                        string sendQQ = groupQQs[gi];
+                        await MessageManager.SendGroupMessageAsync(sendQQ, messages1);
+                    }
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("异常:" + ex.ToString());
+                throw new Exception(ex.ToString());
             }
         }
         
@@ -312,7 +395,7 @@ namespace QQRobot.Mirai.NetWinForm
                                 },
                                 new PlainMessage()
                                 {
-                                    Text = "到手价： "+ Math.Round(Convert.ToDecimal((goodDetails.Detail.min_group_price / 100) - (goodDetails.Detail.coupon_discount / 100)), 2) +"元\n"
+                                    Text = "到手价： "+ Math.Round((goodDetails.Detail.min_group_price.ObjToDecimal() / 100) - (goodDetails.Detail.coupon_discount.ObjToDecimal() / 100), 2) +"元\n"
                                 },
                                 new ImageMessage()
                                 {
@@ -324,6 +407,34 @@ namespace QQRobot.Mirai.NetWinForm
                                 },
                             };
                         updateUI.Invoke("QQ发送商品：" + CommonUtils.HtmlToText(goodDesc));
+                        SendGoodsRecordService send = new SendGoodsRecordService();
+                        send.AddSendGoodsRecord(new Business.Model.BOT_SENDGOODSRECORD()
+                        {
+                            GoodsDesc = goodDesc,
+                            GoodsHasCoupon = goodDetails.Detail.has_coupon ? "Y" : "N",
+                            GoodsName = goodDetails.Detail.goods_name,
+                            GoodsShareDesc = goodDesc,
+                            GoodsOrderUrl = goodDetails.Promotion.short_url,
+                            GoodsUrl = goodDetails.Promotion.url,
+                            GoodsSignID = goodDetails.Detail.goods_sign,
+                            GoodsOptID = goodDetails.Detail.opt_id.ToStr(),
+                            GoodsOptName = goodDetails.Detail.opt_name,
+                            GoodsMinGroupPrice = Math.Round((goodDetails.Detail.min_group_price.ObjToDecimal() / 100), 2),
+                            GoodsMinNormalPrice = Math.Round((goodDetails.Detail.min_normal_price.ObjToDecimal() / 100), 2),
+                            GoodsMinOrderPrice = Math.Round((goodDetails.Detail.min_group_price.ObjToDecimal() / 100) - (goodDetails.Detail.coupon_discount.ObjToDecimal() / 100), 2),
+                            CouponPrice = (goodDetails.Detail.coupon_discount.ObjToDecimal() / 100).ObjToDecimal(),
+                            SendToPlatform = "QQ",
+                            BrandName = goodDetails.Detail.brand_name,
+                            GoodsSalesTip = goodDetails.Detail.sales_tip,
+                            MerchantType = goodDetails.Detail.merchant_type == 1 ? "个人店" : goodDetails.Detail.merchant_type == 2 ? "企业店" : goodDetails.Detail.merchant_type == 3 ? "旗舰店" : goodDetails.Detail.merchant_type == 4 ? "专卖店" : goodDetails.Detail.merchant_type == 5 ? "专营店" : goodDetails.Detail.merchant_type == 6 ? "普通店" : "",
+                            ShopID = goodDetails.Detail.mall_id.ToStr(),
+                            ShopName = goodDetails.Detail.mall_name,
+                            ShopLogo = goodDetails.Detail.mall_img_url,
+                            Platform = "PinDuoduo",
+                            PreferentialLabels = string.Join(',', goodDetails.Detail.unified_tags),
+                            GoodsThumbnails = string.Join(',', goodDetails.Detail.goods_gallery_urls),
+                            GoodsLgstTxt = goodDetails.Detail.lgst_txt
+                        });
                         SendMessageBase(messages.ToArray());
                     }
                     P_GoodsList.Remove(model);
@@ -336,20 +447,47 @@ namespace QQRobot.Mirai.NetWinForm
             }
         }
 
+        private int GoodsPageOffset = 0;
+        private int GoodsPageLimit = 10;
+        //1-今日热销榜,3-相似商品推荐,4-猜你喜欢(和进宝网站精选一致),5-实时热销榜,6-实时收益榜
+        private int[] PinduoduoGoodsChannelType = new int[] { 1, 5, 6, 4 };
+        private int PinduoduoGoodsChannelTypeIndex = 0;
         /// <summary>
         /// 获取商品列表
         /// </summary>
         private void GetPinduoduoGoods() {
+            // 大于 10 页之后，换类型，从0页开始
+            if (GoodsPageOffset > 5) {
+                GoodsPageOffset = 0;
+                PinduoduoGoodsChannelTypeIndex++;
+                if (PinduoduoGoodsChannelTypeIndex >= PinduoduoGoodsChannelType.Length) {
+                    PinduoduoGoodsChannelTypeIndex = 0;
+                }
+            }
             Hashtable param = new Hashtable();
-            param.Add("channel_type", "6");
-            param.Add("limit", "10");
-            param.Add("offset", "6");
+            param.Add("channel_type", PinduoduoGoodsChannelType[PinduoduoGoodsChannelTypeIndex]);
+            param.Add("limit", GoodsPageLimit);
+            param.Add("offset", GoodsPageOffset * GoodsPageLimit);
             string result = HttpUitls.DoPost(CouponSerUrl + "/DuoduoJuan/GetGoodsRecommendList", param);
             var resultData = JObject.Parse(result.ToString());
             LogHelper.Info(resultData["Issuccess"].ToString());
-            if (resultData["Issuccess"].ToString().ToLower() == "true") {
+            P_GoodsList.Clear();
+            if (resultData["Issuccess"].ToString().ToLower() == "true")
+            {
                 var goodResultEntity = JsonHelper.ParseFormByJson<goods_basic_detail_response>(resultData["Data"].ToString());
                 P_GoodsList = goodResultEntity.list;
+                if (P_GoodsList.Count < GoodsPageLimit)
+                {
+                    GoodsPageOffset = 6;
+                }
+                else
+                {
+                    GoodsPageOffset++;
+                }
+            }
+            else {
+                GoodsPageOffset = 6;
+
             }
         }
         /// <summary>
@@ -419,58 +557,7 @@ namespace QQRobot.Mirai.NetWinForm
 
         }
 
-        /// <summary>
-        /// 获取好友列表
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private async void GetFriendsBtn_Click(object sender, EventArgs e)
-        {
-            if (!IsConnnectSuccess)
-            {
-                MessageBox.Show("请先点击测试连接按钮");
-                return;
-            }
-            FriendsListForm friends = new FriendsListForm(BotQQText.Text, BotVerifyKeyText.Text);
-            friends.Owner = this;
-            friends.ShowDialog();
-        }
-        /// <summary>
-        /// 获取群列表
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private async void GetGroupsBtn_Click(object sender, EventArgs e)
-        {
-            if (!IsConnnectSuccess)
-            {
-                MessageBox.Show("请先点击测试连接按钮");
-                return;
-            }
-            FriendsListForm friends = new FriendsListForm(BotQQText.Text, BotVerifyKeyText.Text, "Groups");
-            friends.Owner = this;
-            friends.ShowDialog();
-        }
-        /// <summary>
-        /// 保存从好友或群列表页面选中的数据
-        /// </summary>
-        /// <param name="ChoiceType">friend：好友;Groups ： 群</param>
-        /// <param name="list"></param>
-        public void SaveSelectFriendOrGroupsByList(string ChoiceType, Hashtable hashtable) {
-            ArrayList idArr = new ArrayList();
-            foreach (var item in hashtable.Keys) {
-                idArr.Add(item);
-            }
-            string ids = string.Join(',', idArr.ToArray());
-            if (ChoiceType.ToLower() == "friend")
-            {
-                this.FriendQQBox.Text = ids;
-            }
-            else
-            {
-                this.GroupsQQBox.Text = ids; 
-            }
-        }
+        
         /// <summary>
         /// 群聊发送
         /// </summary>
@@ -521,33 +608,39 @@ namespace QQRobot.Mirai.NetWinForm
         private void SendGroupsTimer_Tick(object sender, EventArgs e)
         {
             AsynUpdateUI updateUI = new AsynUpdateUI(UpdateRunLogRichText);
-            try
+            bool isNeedSend = CommonUtils.IsInTimeInterval(DateTime.Now, ConfigurationSettings.AppSettings["StartSendTimeSpan"].ToStr(), ConfigurationSettings.AppSettings["EndSendTimeSpan"].ToStr());
+            if (isNeedSend)
             {
-                if (P_GoodsList.Count <= 0)
+                try
                 {
-                    GetPinduoduoGoods();
-                }
-                if (P_GoodsList.Count > 0)
-                {
-                    var model = P_GoodsList[0];
-                    Goods_DetailAndPromotion goodDetails = GetPinduoduoGoodDetail(model.goods_sign, model.search_id);
-                    if (goodDetails != null)
+                    if (P_GoodsList.Count <= 0)
                     {
-                        string goodDesc = goodDetails.Detail.goods_desc;
-                        if (goodDetails.Detail.material_list != null)
+                        GetPinduoduoGoods();
+                    }
+                    if (P_GoodsList.Count > 0)
+                    {
+                        var model = P_GoodsList[0];
+                        Goods_DetailAndPromotion goodDetails = GetPinduoduoGoodDetail(model.goods_sign, model.search_id);
+                        if (goodDetails != null)
                         {
-                            var material = goodDetails.Detail.material_list.FirstOrDefault(x => x.type == 1);
-                            if (material != null)
+                            string goodDesc = goodDetails.Detail.goods_desc;
+                            if (goodDetails.Detail.material_list != null)
                             {
-                                goodDesc = material.text_list[0];
+                                var material = goodDetails.Detail.material_list.FirstOrDefault(x => x.type == 1);
+                                if (material != null)
+                                {
+                                    if (material.text_list != null && material.text_list.Count() > 0)
+                                    {
+                                        goodDesc = material.text_list[0];
+                                    }
+                                }
                             }
-                        }
-                        //new FaceMessage()
-                        //{
-                        //    FaceId = "144",
-                        //    Name = "喝彩"
-                        //}
-                        List<MessageBase> messages = new List<MessageBase> {
+                            //new FaceMessage()
+                            //{
+                            //    FaceId = "144",
+                            //    Name = "喝彩"
+                            //}
+                            List<MessageBase> messages = new List<MessageBase> {
                                 new PlainMessage()
                                 {
                                     Text = goodDesc  + "\n"
@@ -559,7 +652,7 @@ namespace QQRobot.Mirai.NetWinForm
                                 },
                                 new PlainMessage()
                                 {
-                                    Text = "到手价： "+ Math.Round(Convert.ToDecimal((goodDetails.Detail.min_group_price / 100) - (goodDetails.Detail.coupon_discount / 100)), 2) +"元\n"
+                                    Text = "到手价： "+ Math.Round((goodDetails.Detail.min_group_price.ObjToDecimal() / 100) - (goodDetails.Detail.coupon_discount.ObjToDecimal() / 100), 2) +"元\n"
                                 },
                                 new ImageMessage()
                                 {
@@ -570,17 +663,123 @@ namespace QQRobot.Mirai.NetWinForm
                                     Text = "\n下单链接： "+ goodDetails.Promotion.short_url
                                 },
                             };
-                        updateUI.Invoke("QQ群发送商品：" + CommonUtils.HtmlToText(goodDesc));
-                        SendMessageBase(messages.ToArray());
+                            updateUI.Invoke("QQ群发送商品：" + CommonUtils.HtmlToText(goodDesc));
+                            SendGoodsRecordService send = new SendGoodsRecordService();
+                            send.AddSendGoodsRecord(new Business.Model.BOT_SENDGOODSRECORD()
+                            {
+                                GoodsDesc = goodDesc,
+                                GoodsHasCoupon = goodDetails.Detail.has_coupon ? "Y" : "N",
+                                GoodsName = goodDetails.Detail.goods_name,
+                                GoodsShareDesc = goodDesc,
+                                GoodsOrderUrl = goodDetails.Promotion.short_url,
+                                GoodsUrl = goodDetails.Promotion.url,
+                                GoodsSignID = goodDetails.Detail.goods_sign,
+                                GoodsOptID = goodDetails.Detail.opt_id.ToStr(),
+                                GoodsOptName = goodDetails.Detail.opt_name,
+                                GoodsMinGroupPrice = Math.Round((goodDetails.Detail.min_group_price.ObjToDecimal() / 100), 2),
+                                GoodsMinNormalPrice = Math.Round((goodDetails.Detail.min_normal_price.ObjToDecimal() / 100), 2),
+                                GoodsMinOrderPrice = Math.Round((goodDetails.Detail.min_group_price.ObjToDecimal() / 100) - (goodDetails.Detail.coupon_discount.ObjToDecimal() / 100), 2),
+                                CouponPrice = (goodDetails.Detail.coupon_discount.ObjToDecimal() / 100).ObjToDecimal(),
+                                SendToPlatform = "QQ",
+                                BrandName = goodDetails.Detail.brand_name,
+                                GoodsSalesTip = goodDetails.Detail.sales_tip,
+                                MerchantType = goodDetails.Detail.merchant_type == 1 ? "个人店" : goodDetails.Detail.merchant_type == 2 ? "企业店" : goodDetails.Detail.merchant_type == 3 ? "旗舰店" : goodDetails.Detail.merchant_type == 4 ? "专卖店" : goodDetails.Detail.merchant_type == 5 ? "专营店" : goodDetails.Detail.merchant_type == 6 ? "普通店" : "",
+                                ShopID = goodDetails.Detail.mall_id.ToStr(),
+                                ShopName = goodDetails.Detail.mall_name,
+                                ShopLogo = goodDetails.Detail.mall_img_url,
+                                Platform = "PinDuoduo",
+                                PreferentialLabels = string.Join(',', goodDetails.Detail.unified_tags),
+                                GoodsThumbnails = string.Join(',', goodDetails.Detail.goods_gallery_urls),
+                                GoodsLgstTxt = goodDetails.Detail.lgst_txt
+                            });
+                            SendMessageBase(messages.ToArray(), "Groups");
+                        }
+                        P_GoodsList.Remove(model);
                     }
-                    P_GoodsList.Remove(model);
+                }
+                catch (Exception ex)
+                {
+                    LogHelper.Error("发送商品信息异常:" + ex.ToString());
+                    updateUI.Invoke("发送商品信息异常");
+                }
+            }
+            else {
+                updateUI.Invoke("QQ群发送商品，未到发送时间，暂不发送");
+            }
+        }
+
+        private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            try
+            {
+                if (BotServerProcessID > 0)
+                {
+                    var process = Process.GetProcessById(BotServerProcessID);
+                    process.Kill();
                 }
             }
             catch (Exception ex)
             {
-                LogHelper.Error("发送商品信息异常:" + ex.ToString());
-                updateUI.Invoke("发送商品信息异常");
+                MessageBox.Show("异常:" + ex.ToString());
             }
         }
+
+        #region 辅助功能
+        /// <summary>
+        /// 获取好友列表
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private async void GetFriendsBtn_Click(object sender, EventArgs e)
+        {
+            if (!IsConnnectSuccess)
+            {
+                MessageBox.Show("请先点击测试连接按钮");
+                return;
+            }
+            FriendsListForm friends = new FriendsListForm(BotQQText.Text, BotVerifyKeyText.Text);
+            friends.Owner = this;
+            friends.ShowDialog();
+        }
+        /// <summary>
+        /// 获取群列表
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private async void GetGroupsBtn_Click(object sender, EventArgs e)
+        {
+            if (!IsConnnectSuccess)
+            {
+                MessageBox.Show("请先点击测试连接按钮");
+                return;
+            }
+            FriendsListForm friends = new FriendsListForm(BotQQText.Text, BotVerifyKeyText.Text, "Groups");
+            friends.Owner = this;
+            friends.ShowDialog();
+        }
+        /// <summary>
+        /// 保存从好友或群列表页面选中的数据
+        /// </summary>
+        /// <param name="ChoiceType">friend：好友;Groups ： 群</param>
+        /// <param name="list"></param>
+        public void SaveSelectFriendOrGroupsByList(string ChoiceType, Hashtable hashtable)
+        {
+            ArrayList idArr = new ArrayList();
+            foreach (var item in hashtable.Keys)
+            {
+                idArr.Add(item);
+            }
+            string ids = string.Join(',', idArr.ToArray());
+            if (ChoiceType.ToLower() == "friend")
+            {
+                this.FriendQQBox.Text = ids;
+            }
+            else
+            {
+                this.GroupsQQBox.Text = ids;
+            }
+        }
+        #endregion
+
     }
 }

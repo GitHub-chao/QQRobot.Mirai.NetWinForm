@@ -124,7 +124,7 @@ namespace QQRobot.Mirai.NetWinForm.Helper
             // 编辑并Encoding提交的数据 
             //String stringJointOfParams = GetJointSOfParams(paramsOfUrl);
             string stringJointOfParams = JsonConvert.SerializeObject(paramsOfUrl);
-            byte[] data = new ASCIIEncoding().GetBytes(stringJointOfParams);
+            byte[] data = new UTF8Encoding().GetBytes(stringJointOfParams);
             return data;
         }
 

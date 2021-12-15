@@ -7,6 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="System.Management" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Business.Model\Business.Model.csproj" />
     <ProjectReference Include="..\Mirai.Net\Mirai.Net.csproj" />
     <ProjectReference Include="..\PinDuoDuo.Models\PinDuoDuo.Models.csproj" />
   </ItemGroup>
